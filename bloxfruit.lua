@@ -1,11 +1,9 @@
--- BLOX FRUITS | M1 HOVER FARM
--- ================================
-local VIM      = game:GetService("VirtualInputManager")
-local Players  = game:GetService("Players")
+-- BF AUTO FARM | PROJECT REAL COMPATIBLE
+local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UIS      = game:GetService("UserInputService")
+local VIM        = game:GetService("VirtualInputManager")
 
-local lp   = Players.LocalPlayer
+local lp = Players.LocalPlayer
 local char, hrp, hum
 
 local function refreshChar()
@@ -15,345 +13,255 @@ local function refreshChar()
     hum  = char:WaitForChild("Humanoid", 5)
 end
 refreshChar()
-lp.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    refreshChar()
-end)
+lp.CharacterAdded:Connect(function() task.wait(0.5) refreshChar() end)
 
--- ============ CONFIG ============
 local cfg = {
-    AutoFarm   = false,
-    ESP        = false,
-    AutoBuso   = false,
-    FarmMob    = "Monkey",   -- ชื่อ mob
-    HoverY     = 6,          -- ความสูงเหนือหัว mob
-    M1Rate     = 0.3,        -- วินาทีต่อครั้ง
-    Speed      = 16,
+    Farm  = false,
+    Mob   = "Bandit",
+    Y     = 5,
+    Rate  = 0.25,
 }
 
--- ============ FIND MOB ============
+-- หา mob ใกล้ที่สุด
 local function getTarget()
     if not hrp then return end
     local best, dist = nil, math.huge
     for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Model")
-        and v.Name:lower():find(cfg.FarmMob:lower())
-        and v ~= char
-        and v:FindFirstChild("HumanoidRootPart")
-        and v:FindFirstChildOfClass("Humanoid")
-        and v:FindFirstChildOfClass("Humanoid").Health > 0 then
-            local d = (hrp.Position - v.HumanoidRootPart.Position).Magnitude
+        local h = v:FindFirstChildOfClass("Humanoid")
+        local r = v:FindFirstChild("HumanoidRootPart")
+        if v:IsA("Model") and v.Name:lower():find(cfg.Mob:lower())
+        and v ~= char and r and h and h.Health > 0 then
+            local d = (hrp.Position - r.Position).Magnitude
             if d < dist then best, dist = v, d end
         end
     end
     return best
 end
 
--- ============ M1 SIMULATE ============
-local function doM1()
-    local cx = workspace.CurrentCamera
-    if not cx then return end
-    local screenCenter = cx.ViewportSize / 2
-    VIM:SendMouseButtonEvent(screenCenter.X, screenCenter.Y, 0, true,  game, 1)
-    task.wait(0.05)
-    VIM:SendMouseButtonEvent(screenCenter.X, screenCenter.Y, 0, false, game, 1)
+-- M1 click
+local function click()
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    local c = cam.ViewportSize / 2
+    VIM:SendMouseButtonEvent(c.X, c.Y, 0, true,  game, 1)
+    task.wait(0.06)
+    VIM:SendMouseButtonEvent(c.X, c.Y, 0, false, game, 1)
 end
 
--- ============ FARM LOOP ============
+-- Farm loop
 task.spawn(function()
-    while task.wait(cfg.M1Rate) do
-        if not cfg.AutoFarm then continue end
+    while task.wait(cfg.Rate) do
+        if not cfg.Farm then continue end
         if not char or not hrp or not hum then continue end
-        if hum.Health <= 0 then task.wait(2) continue end
+        if hum.Health <= 0 then task.wait(3) continue end
 
-        local mob = getTarget()
-        if mob and mob:FindFirstChild("HumanoidRootPart") then
+        local t = getTarget()
+        if t and t:FindFirstChild("HumanoidRootPart") then
             -- ลอยเหนือหัว
-            hrp.CFrame = mob.HumanoidRootPart.CFrame
-                       * CFrame.new(0, cfg.HoverY, 0)
+            local cf = t.HumanoidRootPart.CFrame
+            hrp.CFrame = cf * CFrame.new(0, cfg.Y, 0)
             task.wait(0.05)
-            -- โจมตี
-            doM1()
+            click()
         end
     end
 end)
 
--- ============ AUTO BUSO ============
-task.spawn(function()
-    while task.wait(1) do
-        if not cfg.AutoBuso then continue end
-        -- กด B เพื่อเปิด Buso Haki
-        VIM:SendKeyEvent(true,  Enum.KeyCode.B, false, game)
-        task.wait(0.1)
-        VIM:SendKeyEvent(false, Enum.KeyCode.B, false, game)
-    end
-end)
-
--- ============ ESP ============
-local espTag = "BF_ESP2"
-local function clearESP()
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v.Name == espTag then v:Destroy() end
-    end
-end
-local function drawESP()
-    clearESP()
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v ~= char
-        and v:FindFirstChildOfClass("Humanoid")
-        and v:FindFirstChild("HumanoidRootPart") then
-            local bb = Instance.new("BillboardGui")
-            bb.Name        = espTag
-            bb.Size        = UDim2.new(0, 100, 0, 24)
-            bb.StudsOffset = Vector3.new(0, 3.5, 0)
-            bb.AlwaysOnTop = true
-            bb.Parent      = v.HumanoidRootPart
-            local lbl = Instance.new("TextLabel")
-            lbl.Size                    = UDim2.new(1,0,1,0)
-            lbl.BackgroundTransparency  = 0.3
-            lbl.BackgroundColor3        = Color3.fromRGB(10,10,20)
-            lbl.TextColor3              = Color3.fromRGB(255,100,100)
-            lbl.Text                    = v.Name
-            lbl.Font                    = Enum.Font.GothamBold
-            lbl.TextSize                = 12
-            lbl.Parent                  = bb
-        end
-    end
-end
-task.spawn(function()
-    while task.wait(3) do
-        if cfg.ESP then drawESP() else clearESP() end
-    end
-end)
-
--- ============ SPEED ============
-RunService.Heartbeat:Connect(function()
-    if hum then hum.WalkSpeed = cfg.Speed end
-end)
-
--- ============ GUI ============
--- ลบ GUI เก่า
+-- ============ GUI (Maru Style) ============
 local cg = game:GetService("CoreGui")
-if cg:FindFirstChild("BF_MAIN") then cg:FindFirstChild("BF_MAIN"):Destroy() end
+if cg:FindFirstChild("BF_UI") then cg.BF_UI:Destroy() end
 
 local sg = Instance.new("ScreenGui")
-sg.Name = "BF_MAIN"
-sg.ResetOnSpawn = false
+sg.Name, sg.ResetOnSpawn = "BF_UI", false
 sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 sg.Parent = cg
 
--- Shadow/Background
-local shadow = Instance.new("Frame")
-shadow.Size             = UDim2.new(0, 256, 0, 380)
-shadow.Position         = UDim2.new(0, 12, 0.15, 0)
-shadow.BackgroundColor3 = Color3.fromRGB(0,0,0)
-shadow.BackgroundTransparency = 0.5
-shadow.BorderSizePixel  = 0
-shadow.Parent           = sg
-Instance.new("UICorner", shadow).CornerRadius = UDim.new(0,12)
+-- Window
+local win = Instance.new("Frame")
+win.Size             = UDim2.new(0, 320, 0, 240)
+win.Position         = UDim2.new(0.5,-160, 0.5,-120)
+win.BackgroundColor3 = Color3.fromRGB(13,13,22)
+win.BorderSizePixel  = 0
+win.Active           = true
+win.Draggable        = true
+win.Parent           = sg
+Instance.new("UICorner", win).CornerRadius = UDim.new(0,10)
 
--- Main Frame
-local fr = Instance.new("Frame")
-fr.Size             = UDim2.new(0, 250, 0, 375)
-fr.Position         = UDim2.new(0, 10, 0.15, 0)
-fr.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
-fr.BorderSizePixel  = 0
-fr.Active           = true
-fr.Draggable        = true
-fr.Parent           = sg
-Instance.new("UICorner", fr).CornerRadius = UDim.new(0, 10)
+-- Top bar (Maru style)
+local topBar = Instance.new("Frame")
+topBar.Size             = UDim2.new(1,0,0,46)
+topBar.BackgroundColor3 = Color3.fromRGB(10,10,18)
+topBar.BorderSizePixel  = 0
+topBar.Parent           = win
+Instance.new("UICorner", topBar).CornerRadius = UDim.new(0,10)
 
--- Gradient top
-local grad = Instance.new("UIGradient")
-grad.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(30,10,60)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(12,12,20)),
-}
-grad.Rotation = 90
-grad.Parent   = fr
+-- Fix bottom corners of topbar
+local topFix = Instance.new("Frame")
+topFix.Size             = UDim2.new(1,0,0,10)
+topFix.Position         = UDim2.new(0,0,1,-10)
+topFix.BackgroundColor3 = Color3.fromRGB(10,10,18)
+topFix.BorderSizePixel  = 0
+topFix.Parent           = topBar
 
--- Title bar
-local titleBar = Instance.new("Frame")
-titleBar.Size             = UDim2.new(1,0,0,44)
-titleBar.BackgroundTransparency = 1
-titleBar.Parent           = fr
+-- Blue accent line
+local accent = Instance.new("Frame")
+accent.Size             = UDim2.new(0,3,1,-16)
+accent.Position         = UDim2.new(0,0,0,8)
+accent.BackgroundColor3 = Color3.fromRGB(80,140,255)
+accent.BorderSizePixel  = 0
+accent.Parent           = topBar
+Instance.new("UICorner", accent).CornerRadius = UDim.new(1,0)
 
-local titleLbl = Instance.new("TextLabel")
-titleLbl.Size         = UDim2.new(1,-10,1,0)
-titleLbl.Position     = UDim2.new(0,12,0,0)
-titleLbl.Text         = "🌊  BloxFruit  |  M1 Farm"
-titleLbl.TextColor3   = Color3.fromRGB(255,220,80)
-titleLbl.Font         = Enum.Font.GothamBold
-titleLbl.TextSize     = 15
-titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-titleLbl.BackgroundTransparency = 1
-titleLbl.Parent       = titleBar
+-- Hub name
+local hubName = Instance.new("TextLabel")
+hubName.Size              = UDim2.new(1,0,0,24)
+hubName.Position          = UDim2.new(0,14,0,6)
+hubName.Text              = "🔧  Auto Farm Script"
+hubName.TextColor3        = Color3.fromRGB(220,225,255)
+hubName.Font              = Enum.Font.GothamBold
+hubName.TextSize          = 13
+hubName.TextXAlignment    = Enum.TextXAlignment.Left
+hubName.BackgroundTransparency = 1
+hubName.Parent            = topBar
 
-local divider = Instance.new("Frame")
-divider.Size             = UDim2.new(1,-20,0,1)
-divider.Position         = UDim2.new(0,10,0,44)
-divider.BackgroundColor3 = Color3.fromRGB(60,40,100)
-divider.BorderSizePixel  = 0
-divider.Parent           = fr
+local gameName = Instance.new("TextLabel")
+gameName.Size             = UDim2.new(1,0,0,16)
+gameName.Position         = UDim2.new(0,14,0,26)
+gameName.Text             = "[ Blox Fruits ]"
+gameName.TextColor3       = Color3.fromRGB(80,140,255)
+gameName.Font             = Enum.Font.Gotham
+gameName.TextSize         = 11
+gameName.TextXAlignment   = Enum.TextXAlignment.Left
+gameName.BackgroundTransparency = 1
+gameName.Parent           = topBar
 
--- Toggle builder
-local yy = 54
-local function mkToggle(label, desc, key, onColor)
-    local card = Instance.new("Frame")
-    card.Size             = UDim2.new(1,-16,0,52)
-    card.Position         = UDim2.new(0,8,0,yy)
-    card.BackgroundColor3 = Color3.fromRGB(20,20,35)
-    card.BorderSizePixel  = 0
-    card.Parent           = fr
-    Instance.new("UICorner", card).CornerRadius = UDim.new(0,8)
+-- Content area
+local content = Instance.new("Frame")
+content.Size              = UDim2.new(1,-24,0,180)
+content.Position          = UDim2.new(0,12,0,56)
+content.BackgroundTransparency = 1
+content.Parent            = win
 
-    local lbl = Instance.new("TextLabel")
-    lbl.Size              = UDim2.new(0.7,0,0,22)
-    lbl.Position          = UDim2.new(0,10,0,6)
-    lbl.Text              = label
-    lbl.TextColor3        = Color3.fromRGB(230,230,240)
-    lbl.Font              = Enum.Font.GothamBold
-    lbl.TextSize          = 13
-    lbl.TextXAlignment    = Enum.TextXAlignment.Left
-    lbl.BackgroundTransparency = 1
-    lbl.Parent            = card
+-- Section label
+local secLbl = Instance.new("TextLabel")
+secLbl.Size               = UDim2.new(1,0,0,18)
+secLbl.Text               = "●  Farm Settings"
+secLbl.TextColor3         = Color3.fromRGB(80,140,255)
+secLbl.Font               = Enum.Font.GothamBold
+secLbl.TextSize           = 12
+secLbl.TextXAlignment     = Enum.TextXAlignment.Left
+secLbl.BackgroundTransparency = 1
+secLbl.Parent             = content
 
-    local sub = Instance.new("TextLabel")
-    sub.Size              = UDim2.new(0.7,0,0,18)
-    sub.Position          = UDim2.new(0,10,0,26)
-    sub.Text              = desc
-    sub.TextColor3        = Color3.fromRGB(130,120,160)
-    sub.Font              = Enum.Font.Gotham
-    sub.TextSize          = 10
-    sub.TextXAlignment    = Enum.TextXAlignment.Left
-    sub.BackgroundTransparency = 1
-    sub.Parent            = card
+-- ---- Auto Farm toggle card ----
+local card1 = Instance.new("Frame")
+card1.Size             = UDim2.new(1,0,0,56)
+card1.Position         = UDim2.new(0,0,0,24)
+card1.BackgroundColor3 = Color3.fromRGB(20,20,34)
+card1.BorderSizePixel  = 0
+card1.Parent           = content
+Instance.new("UICorner", card1).CornerRadius = UDim.new(0,8)
 
-    -- Toggle pill
-    local pill = Instance.new("Frame")
-    pill.Size             = UDim2.new(0,44,0,24)
-    pill.Position         = UDim2.new(1,-54,0.5,-12)
-    pill.BackgroundColor3 = Color3.fromRGB(50,50,70)
-    pill.BorderSizePixel  = 0
-    pill.Parent           = card
-    Instance.new("UICorner", pill).CornerRadius = UDim.new(1,0)
+local c1title = Instance.new("TextLabel")
+c1title.Size   = UDim2.new(0.7,0,0,20)
+c1title.Position = UDim2.new(0,12,0,8)
+c1title.Text   = "Auto Farm"
+c1title.TextColor3 = Color3.fromRGB(230,235,255)
+c1title.Font   = Enum.Font.GothamBold
+c1title.TextSize = 13
+c1title.TextXAlignment = Enum.TextXAlignment.Left
+c1title.BackgroundTransparency = 1
+c1title.Parent = card1
 
-    local dot = Instance.new("Frame")
-    dot.Size             = UDim2.new(0,18,0,18)
-    dot.Position         = UDim2.new(0,3,0.5,-9)
-    dot.BackgroundColor3 = Color3.fromRGB(160,160,180)
-    dot.BorderSizePixel  = 0
-    dot.Parent           = pill
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
+local c1sub = Instance.new("TextLabel")
+c1sub.Size     = UDim2.new(0.7,0,0,16)
+c1sub.Position = UDim2.new(0,12,0,28)
+c1sub.Text     = "M1 hover บนหัว mob อัตโนมัติ"
+c1sub.TextColor3 = Color3.fromRGB(100,105,140)
+c1sub.Font     = Enum.Font.Gotham
+c1sub.TextSize = 10
+c1sub.TextXAlignment = Enum.TextXAlignment.Left
+c1sub.BackgroundTransparency = 1
+c1sub.Parent   = card1
 
-    local on = false
-    local btn = Instance.new("TextButton")
-    btn.Size              = UDim2.new(1,0,1,0)
-    btn.BackgroundTransparency = 1
-    btn.Text              = ""
-    btn.Parent            = card
+-- Toggle pill
+local pill = Instance.new("Frame")
+pill.Size             = UDim2.new(0,46,0,24)
+pill.Position         = UDim2.new(1,-58,0.5,-12)
+pill.BackgroundColor3 = Color3.fromRGB(40,40,60)
+pill.BorderSizePixel  = 0
+pill.Parent           = card1
+Instance.new("UICorner", pill).CornerRadius = UDim.new(1,0)
 
-    btn.MouseButton1Click:Connect(function()
-        on = not on
-        cfg[key] = on
-        if on then
-            pill.BackgroundColor3 = onColor
-            dot.BackgroundColor3  = Color3.fromRGB(255,255,255)
-            dot.Position          = UDim2.new(1,-21,0.5,-9)
-        else
-            pill.BackgroundColor3 = Color3.fromRGB(50,50,70)
-            dot.BackgroundColor3  = Color3.fromRGB(160,160,180)
-            dot.Position          = UDim2.new(0,3,0.5,-9)
-        end
-    end)
+local dot = Instance.new("Frame")
+dot.Size             = UDim2.new(0,18,0,18)
+dot.Position         = UDim2.new(0,3,0.5,-9)
+dot.BackgroundColor3 = Color3.fromRGB(140,140,160)
+dot.BorderSizePixel  = 0
+dot.Parent           = pill
+Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
 
-    yy = yy + 60
-end
+local farmOn = false
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size   = UDim2.new(1,0,1,0)
+toggleBtn.BackgroundTransparency = 1
+toggleBtn.Text   = ""
+toggleBtn.Parent = card1
 
-mkToggle("Auto Farm",  "M1 hover บนหัว mob",    "AutoFarm", Color3.fromRGB(80,200,120))
-mkToggle("Auto Buso",  "กด B เปิด Armament Haki","AutoBuso", Color3.fromRGB(255,160,20))
-mkToggle("ESP",        "แสดงชื่อ mob/player",    "ESP",      Color3.fromRGB(160,80,255))
+local tw = game:GetService("TweenService")
+toggleBtn.MouseButton1Click:Connect(function()
+    farmOn = not farmOn
+    cfg.Farm = farmOn
+    if farmOn then
+        tw:Create(pill, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80,140,255)}):Play()
+        tw:Create(dot,  TweenInfo.new(0.2), {Position = UDim2.new(1,-21,0.5,-9), BackgroundColor3 = Color3.fromRGB(255,255,255)}):Play()
+        c1sub.Text = "✅ กำลัง farm: " .. cfg.Mob
+        c1sub.TextColor3 = Color3.fromRGB(80,200,120)
+    else
+        tw:Create(pill, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40,40,60)}):Play()
+        tw:Create(dot,  TweenInfo.new(0.2), {Position = UDim2.new(0,3,0.5,-9), BackgroundColor3 = Color3.fromRGB(140,140,160)}):Play()
+        c1sub.Text = "M1 hover บนหัว mob อัตโนมัติ"
+        c1sub.TextColor3 = Color3.fromRGB(100,105,140)
+    end
+end)
 
--- Mob Name input
-local mobCard = Instance.new("Frame")
-mobCard.Size             = UDim2.new(1,-16,0,50)
-mobCard.Position         = UDim2.new(0,8,0,yy)
-mobCard.BackgroundColor3 = Color3.fromRGB(20,20,35)
-mobCard.BorderSizePixel  = 0
-mobCard.Parent           = fr
-Instance.new("UICorner", mobCard).CornerRadius = UDim.new(0,8)
+-- ---- Mob Name ----
+local card2 = Instance.new("Frame")
+card2.Size             = UDim2.new(1,0,0,46)
+card2.Position         = UDim2.new(0,0,0,88)
+card2.BackgroundColor3 = Color3.fromRGB(20,20,34)
+card2.BorderSizePixel  = 0
+card2.Parent           = content
+Instance.new("UICorner", card2).CornerRadius = UDim.new(0,8)
 
 local mobLbl = Instance.new("TextLabel")
-mobLbl.Size   = UDim2.new(0.45,0,0,20)
-mobLbl.Position = UDim2.new(0,10,0.5,-10)
+mobLbl.Size   = UDim2.new(0.45,0,1,0)
+mobLbl.Position = UDim2.new(0,12,0,0)
 mobLbl.Text   = "🎯 Mob Name"
-mobLbl.TextColor3 = Color3.fromRGB(200,200,220)
+mobLbl.TextColor3 = Color3.fromRGB(200,205,230)
 mobLbl.Font   = Enum.Font.GothamBold
 mobLbl.TextSize = 12
 mobLbl.TextXAlignment = Enum.TextXAlignment.Left
 mobLbl.BackgroundTransparency = 1
-mobLbl.Parent = mobCard
+mobLbl.Parent = card2
 
-local mobBox = Instance.new("TextBox")
-mobBox.Size             = UDim2.new(0.5,-10,0,28)
-mobBox.Position         = UDim2.new(0.5,0,0.5,-14)
-mobBox.BackgroundColor3 = Color3.fromRGB(30,30,50)
-mobBox.TextColor3       = Color3.fromRGB(255,255,255)
-mobBox.PlaceholderText  = "Monkey..."
-mobBox.Text             = cfg.FarmMob
-mobBox.Font             = Enum.Font.Gotham
-mobBox.TextSize         = 12
-mobBox.BorderSizePixel  = 0
-mobBox.ClearTextOnFocus = false
-mobBox.Parent           = mobCard
-Instance.new("UICorner", mobBox).CornerRadius = UDim.new(0,6)
-
-mobBox.FocusLost:Connect(function()
-    if mobBox.Text ~= "" then
-        cfg.FarmMob = mobBox.Text
+local box = Instance.new("TextBox")
+box.Size             = UDim2.new(0.5,-10,0,28)
+box.Position         = UDim2.new(0.5,0,0.5,-14)
+box.BackgroundColor3 = Color3.fromRGB(30,30,50)
+box.TextColor3       = Color3.fromRGB(255,255,255)
+box.PlaceholderText  = "ชื่อ mob..."
+box.Text             = cfg.Mob
+box.Font             = Enum.Font.Gotham
+box.TextSize         = 12
+box.BorderSizePixel  = 0
+box.ClearTextOnFocus = false
+box.Parent           = card2
+Instance.new("UICorner", box).CornerRadius = UDim.new(0,6)
+box.FocusLost:Connect(function()
+    if box.Text ~= "" then
+        cfg.Mob = box.Text
+        if farmOn then c1sub.Text = "✅ กำลัง farm: " .. cfg.Mob end
     end
 end)
 
-yy = yy + 58
-
--- Speed control
-local spCard = Instance.new("Frame")
-spCard.Size             = UDim2.new(1,-16,0,42)
-spCard.Position         = UDim2.new(0,8,0,yy)
-spCard.BackgroundColor3 = Color3.fromRGB(20,20,35)
-spCard.BorderSizePixel  = 0
-spCard.Parent           = fr
-Instance.new("UICorner", spCard).CornerRadius = UDim.new(0,8)
-
-local spLbl = Instance.new("TextLabel")
-spLbl.Size   = UDim2.new(0.5,0,1,0)
-spLbl.Position = UDim2.new(0,10,0,0)
-spLbl.Text   = "⚡ Speed: " .. cfg.Speed
-spLbl.TextColor3 = Color3.fromRGB(200,200,220)
-spLbl.Font   = Enum.Font.GothamBold
-spLbl.TextSize = 12
-spLbl.TextXAlignment = Enum.TextXAlignment.Left
-spLbl.BackgroundTransparency = 1
-spLbl.Parent = spCard
-
-local function mkSpBtn(txt, xp, col, delta)
-    local b = Instance.new("TextButton")
-    b.Size             = UDim2.new(0,32,0,26)
-    b.Position         = UDim2.new(xp,-36,0.5,-13)
-    b.Text             = txt
-    b.BackgroundColor3 = col
-    b.TextColor3       = Color3.fromRGB(255,255,255)
-    b.Font             = Enum.Font.GothamBold
-    b.TextSize         = 16
-    b.BorderSizePixel  = 0
-    b.Parent           = spCard
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
-    b.MouseButton1Click:Connect(function()
-        cfg.Speed = math.clamp(cfg.Speed + delta, 16, 500)
-        spLbl.Text = "⚡ Speed: " .. cfg.Speed
-    end)
-end
-mkSpBtn("-", 0.72, Color3.fromRGB(180,30,30),  -10)
-mkSpBtn("+", 1.0,  Color3.fromRGB(30,150,30),  10)
-
-print("[✓] BF M1 Farm loaded")
+print("[✓] Script loaded on Project Real")
